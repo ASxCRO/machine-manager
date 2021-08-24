@@ -1,3 +1,4 @@
+using Manager.API.Repositories;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
@@ -31,6 +32,9 @@ namespace Manager.API
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "Manager.API", Version = "v1" });
             });
+            services.AddScoped<MachinesRepository>();
+            services.AddScoped<FailuresRepository>();
+
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
