@@ -1,0 +1,302 @@
+﻿@page "/strojevi"
+@using Manager.UI.ViewModels
+@using Manager.Shared.Models.DTOs
+@using Manager.UI.Dialogs
+@using Manager.Shared.Models.Enums
+
+
+@inject HttpClient httpClient
+@inject ISnackbar snackbar
+@inject IDialogService DialogService
+
+<MudPaper Class="main-paper pa-5" Outlined="true" Square="true">
+    <MudButton Variant="Variant.Filled" StartIcon="@Icons.Outlined.Add" OnClick="@(() => AddMachine())">
+        Dodaj stroj
+    </MudButton>
+</MudPaper>
+
+@if (isLoading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-7" />
+}
+else
+{
+    <MudTable Items="@Machines" Hover="true" Breakpoint="Breakpoint.Sm">
+        <ColGroup>
+            <col />
+            <col />
+            <col />
+        </ColGroup>
+        <HeaderContent>
+            <MudTh></MudTh>
+            <MudTh><b>Name</b></MudTh>
+            <MudTh><b>Uredi</b></MudTh>
+            <MudTh><b>Ukloni</b></MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd><MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => ShowBtnPress(context.Id))">@((context.ShowDetails == true)? "Sakrij" : "Prikazi")  kvarove</MudButton></MudTd>
+            <MudTd DataLabel="Nr">@context.Name</MudTd>
+            <MudTd>
+                <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => EditMachine(context))" StartIcon="@Icons.Outlined.Edit">
+                </MudButton>
+            </MudTd>
+            <MudTd>
+                <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => RemoveMachine(context.Id))" StartIcon="@Icons.Outlined.Remove">
+                </MudButton>
+            </MudTd>
+        </RowTemplate>
+        <ChildRowContent>
+            @if (context.ShowDetails)
+                {
+                    if (context.Failures.Count() == 0)
+                    {
+                    <MudPaper Class="main-paper pa-5" Outlined="true" Square="true">
+                        <MudButton Variant="Variant.Filled" StartIcon="@Icons.Outlined.Add" OnClick="@(() => AddFailure(context.Id))">
+                            Dodaj kvar
+                        </MudButton>
+                    </MudPaper>
+                    <p style="margin: 2rem 0 1rem 0; text-align: center;"><b>Nema rezultata</b></p>
+                    }
+                    else
+                    {
+
+                    <MudTr>
+                        <td colspan="4">
+                            <MudCard Elevation="0">
+                                <MudCardHeader>
+                                    <CardHeaderContent>
+                                        <MudText Typo="Typo.body1">Detalji kvarova na stroju: <strong>@context.Name</strong></MudText>
+                                    </CardHeaderContent>
+                                </MudCardHeader>
+                                <MudCardContent Class="pa-0">
+                                    <MudPaper Class="main-paper pa-5" Outlined="true" Square="true">
+                                        <MudButton Variant="Variant.Filled" StartIcon="@Icons.Outlined.Add" OnClick="@(() => AddFailure(context.Id))">
+                                            Dodaj kvar
+                                        </MudButton>
+                                    </MudPaper>
+                                    <MudTable Items="@context.Failures" Context="FailuresContext" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="0">
+                                        <ColGroup>
+                                            <col />
+                                            <col />
+                                            <col />
+                                            <col />
+                                            <col />
+                                            <col />
+                                            <col />
+                                        </ColGroup>
+                                        <HeaderContent>
+                                            <MudTh><b>Name</b></MudTh>
+                                            <MudTh><b>Description</b></MudTh>
+                                            <MudTh><b>Priority</b></MudTh>
+                                            <MudTh><b>Status</b></MudTh>
+                                            <MudTh><b>CheckInTime</b></MudTh>
+                                            <MudTh><b>Uredi</b></MudTh>
+                                            <MudTh><b>Ukloni</b></MudTh>
+                                        </HeaderContent>
+                                        <RowTemplate>
+                                            <MudTd DataLabel="Description">@FailuresContext.Name</MudTd>
+                                            <MudTd DataLabel="Description">@FailuresContext.Description</MudTd>
+                                            <MudTd DataLabel="Priority">@(Enum.GetName(typeof(Priority),FailuresContext.Priority))</MudTd>
+                                            <MudTd DataLabel="Status">@(Enum.GetName(typeof(FailureStatus),FailuresContext.Status))</MudTd>
+                                            <MudTd DataLabel="CheckInTime">@FailuresContext.CheckInTime.ToLongDateString() @FailuresContext.CheckInTime.ToLongTimeString()</MudTd>
+                                            <MudTd>
+                                                <MudButton Variant="Variant.Outlined" Size="Size.Small"
+                                                           OnClick="@(() => EditFailure(FailuresContext))" StartIcon="@Icons.Outlined.Edit">
+                                                </MudButton>
+                                            </MudTd>
+                                            <MudTd>
+                                                <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => RemoveFailure(FailuresContext.Id))" StartIcon="@Icons.Outlined.Remove">
+                                                </MudButton>
+                                            </MudTd>
+                                        </RowTemplate>
+                                    </MudTable>
+                                </MudCardContent>
+                            </MudCard>
+                        </td>
+                    </MudTr>
+                    }
+
+                }
+        </ChildRowContent>
+    </MudTable>
+}
+
+
+@code
+{
+    private static List<MachineViewModel> Machines { get; set; }
+    private bool isLoading { get; set; }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        Machines = await LoadData();
+    }
+
+    private async Task<List<MachineViewModel>> LoadData()
+    {
+        isLoading = true;
+        Machines = new();
+        var machinesDTO = await httpClient.GetFromJsonAsync<List<MachineDTO>>("api/Machines/GetAllMachines");
+        foreach (var item in machinesDTO)
+        {
+            Machines.Add(new MachineViewModel
+            {
+                Id = item.Id,
+                Failures = item.Failures,
+                Name = item.Name,
+                ShowDetails = false
+            });
+        }
+        isLoading = false;
+        return Machines;
+    }
+
+
+    private void ShowBtnPress(int id)
+    {
+        MachineViewModel machine = Machines.First(f => f.Id == id);
+        machine.ShowDetails = !machine.ShowDetails;
+    }
+
+    private async Task AddMachine()
+    {
+        var parameters = new DialogParameters();
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Medium };
+
+        var dialog = DialogService.Show<MachineCreateDialog>("Dodavanje stroja", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Cancelled)
+        {
+            var machineUpdateDTO = (MachineCreateDTO)result.Data;
+            var response = await httpClient.PostAsJsonAsync<MachineCreateDTO>($"api/Machines/InsertMachine", machineUpdateDTO);
+            if (response.IsSuccessStatusCode)
+                snackbar.Add("Uspješno dodan stroj");
+
+            Machines = await LoadData();
+        }
+    }
+
+    private async Task EditMachine(MachineDTO machine)
+    {
+        var parameters = new DialogParameters();
+        parameters.Add("Machine", machine);
+
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small };
+
+        var dialog = DialogService.Show<MachineEditDialog>("Uredivanje stroja", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Cancelled)
+        {
+            var machineUpdateDTO = (MachineUpdateDTO)result.Data;
+            var response = await httpClient.PutAsJsonAsync<MachineUpdateDTO>($"api/Machines/UpdateMachine", machineUpdateDTO);
+            if (response.IsSuccessStatusCode)
+                snackbar.Add("Uspješno ažuriran stroj");
+
+            Machines = await LoadData();
+        }
+    }
+
+
+    private async Task RemoveMachine(int id)
+    {
+        var parameters = new DialogParameters();
+        parameters.Add("ContentText", "Jeste li sigurni da želite obrisati stroj?");
+        parameters.Add("ButtonText", "Potvrdi");
+        parameters.Add("Color", Color.Error);
+
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small };
+
+        var dialog = DialogService.Show<MachineDeleteDialog>("Brisanje stroja", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Cancelled)
+        {
+            var response = await httpClient.DeleteAsync($"api/Machines/RemoveMachine?id={id}");
+            if (response.IsSuccessStatusCode)
+                snackbar.Add("Uspješno obrisan stroj");
+
+            Machines = await LoadData();
+        }
+    }
+
+    private async Task AddFailure(int machineId)
+    {
+        var parameters = new DialogParameters();
+        parameters.Add("MachineId", machineId);
+
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Medium };
+
+        var dialog = DialogService.Show<FailureCreateDialog>("Dodavanje kvara", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Cancelled)
+        {
+            var failureCreateDTO = (FailureCreateDTO)result.Data;
+            var response = await httpClient.PostAsJsonAsync<FailureCreateDTO>($"api/Machines/InsertFailure", failureCreateDTO);
+            if (response.IsSuccessStatusCode)
+                snackbar.Add("Uspješno dodan kvar");
+
+            Machines = await LoadData();
+        }
+    }
+
+
+    private async Task EditFailure(FailureDTO failure)
+    {
+        var parameters = new DialogParameters();
+        parameters.Add("Failure", failure);
+
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Medium };
+
+        var dialog = DialogService.Show<FailureCreateDialog>("Uređivanje kvara", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Cancelled)
+        {
+            var failureCreateDTO = (FailureCreateDTO)result.Data;
+            var failureUpdateDTO = new FailureUpdateDTO
+            {
+                Name = failureCreateDTO.Name,
+                Id = failure.Id,
+                Attachments = failureCreateDTO.Attachments,
+                Description = failureCreateDTO.Description,
+                Priority = failureCreateDTO.Priority,
+                Status = failureCreateDTO.Status
+            };
+
+            failureUpdateDTO.Attachments.AddRange(failure.Attachments);
+
+            var response = await httpClient.PostAsJsonAsync<FailureUpdateDTO>($"api/Machines/UpdateFailure", failureUpdateDTO);
+            if (response.IsSuccessStatusCode)
+                snackbar.Add("Uspješno ažuriran kvar");
+
+            Machines = await LoadData();
+        }
+    }
+
+
+    private async Task RemoveFailure(int id)
+    {
+        var parameters = new DialogParameters();
+        parameters.Add("ContentText", "Jeste li sigurni da želite obrisati kvar?");
+        parameters.Add("ButtonText", "Potvrdi");
+        parameters.Add("Color", Color.Error);
+
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Small };
+
+        var dialog = DialogService.Show<MachineDeleteDialog>("Brisanje kvara", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Cancelled)
+        {
+            var response = await httpClient.DeleteAsync($"api/Machines/RemoveFailure?id={id}");
+            if (response.IsSuccessStatusCode)
+                snackbar.Add("Uspješno obrisan kvar");
+
+            Machines = await LoadData();
+        }
+    }
+}

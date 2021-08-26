@@ -9,7 +9,7 @@ namespace Manager.Shared.Models.DTOs
             Failures = new();
         }
         public int Id { get; set; }
-        public string Name { get; set; }
+        public virtual string Name { get; set; }
         public List<FailureDTO> Failures { get; set; }
     }
 }

@@ -1,0 +1,41 @@
+﻿@using Manager.UI.ViewModels
+@using Manager.Shared.Models.DTOs
+ 
+<MudDialog >
+    <DialogContent>
+        <EditForm Model="@Machine">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+            <MudItem xs="10">
+                <MudTextField @bind-Value="_machine.Name" Label="Ime stroja" HelperText="Unesite ime stroja" Variant="Variant.Outlined" />
+            </MudItem>
+        </EditForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Primary" OnClick="Ok">Potvrdi</MudButton>
+    </DialogActions>
+</MudDialog>
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+    [Parameter] public MachineViewModel Machine { get; set; }
+    private MachineViewModel _machine { get; set; }
+
+    protected override Task OnParametersSetAsync()
+    {
+        _machine = new MachineViewModel
+        {
+            Id= Machine.Id,
+            Name = Machine.Name,
+            Failures = Machine.Failures,
+            ShowDetails = Machine.ShowDetails
+        };
+
+        return base.OnParametersSetAsync();
+    }
+
+    private void Ok()
+    {
+        MudDialog.Close(DialogResult.Ok(new MachineUpdateDTO { Id= _machine.Id, Name= _machine.Name}));
+    }
+}
+

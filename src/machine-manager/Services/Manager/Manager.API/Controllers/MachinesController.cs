@@ -39,7 +39,7 @@ namespace Manager.API.Controllers
 
         [HttpPost]
         [Route("InsertMachine")]
-        public IActionResult Insert(MachineCreateDTO item)
+        public IActionResult InsertMachine(MachineCreateDTO item)
         {
             machinesRepository.Add(mapper.Map<Machine>(item));
             return Ok();
@@ -93,11 +93,19 @@ namespace Manager.API.Controllers
             return Ok();
         }
 
-        [HttpPut]
+        [HttpPost]
         [Route("UpdateFailure")]
         public IActionResult UpdateFailure(FailureUpdateDTO item)
         {
             failuresRepository.Update(mapper.Map<Failure>(item));
+            return Ok();
+        }
+
+        [HttpPost]
+        [Route("UpdateFailureStatus")]
+        public IActionResult UpdateFailureStatus(FailureUpdateDTO item)
+        {
+            failuresRepository.UpdateStatus(mapper.Map<Failure>(item));
             return Ok();
         }
     }

@@ -1,0 +1,109 @@
+﻿@page "/"
+
+@using Manager.Shared.Models.DTOs
+@using Manager.UI.ViewModels
+@using Manager.Shared.Models.Enums
+
+@inject HttpClient httpClient
+@inject ISnackbar snackbar
+
+
+<h1 class="p-3 m-2">Neoklonjeni kvarovi</h1>
+
+<MudPaper Class="main-paper pa-5" Outlined="true" Square="true">
+    <MudButton Variant="Variant.Filled" StartIcon="@Icons.Outlined.Save" OnClick="@(() => Save())">
+        Spremi stanje
+    </MudButton>
+</MudPaper>
+
+@if (isLoading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-7" />
+}
+else
+{
+    <MudTable Items="@FailureViewModels" Hover="true" Breakpoint="Breakpoint.Sm">
+        <HeaderContent>
+            <MudTh>Ime kvara</MudTh>
+            <MudTh>Ime stroja</MudTh>
+            <MudTh>Opis</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh>Prijavljen</MudTh>
+            <MudTh>Promjeni status</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Ime kvara">@context.FailureName</MudTd>
+            <MudTd DataLabel="Ime stroja">@context.MachineName</MudTd>
+            <MudTd DataLabel="Opis">@context.FailureDescription</MudTd>
+            <MudTd DataLabel="Status">@(Enum.GetName(typeof(FailureStatus), context.FailureStatus))</MudTd>
+            <MudTd DataLabel="Prijavljen">@context.FailureCheckInTime.ToLongDateString() @context.FailureCheckInTime.ToLongTimeString()</MudTd>
+            <MudTd DataLabel="StatusPromjena">
+                <MudSelect @bind-Value="@context.FailureStatus" Label="Status kvara" Variant="Variant.Outlined" OffsetY="true">
+                    @foreach (var status in Enum.GetValues(typeof(FailureStatus)))
+                        {
+                        <MudSelectItem Value="(int)status" T="int">
+                            @((FailureStatus)status)
+                        </MudSelectItem>
+                        }
+                </MudSelect>
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+}
+
+
+
+@code {
+    private static List<FailureViewModel> FailureViewModels { get; set; }
+    private bool isLoading { get; set; }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+
+        FailureViewModels = new();
+        var machinesDTO = await httpClient.GetFromJsonAsync<List<MachineDTO>>("api/Machines/GetAllMachines");
+        foreach (var item in machinesDTO)
+            foreach (var fail in item.Failures.Where(s => s.Status != FailureStatus.FIXED)
+                .OrderBy(s => (int)s.Priority).ThenByDescending(s => s.CheckInTime).ToList())
+                FailureViewModels.Add(new FailureViewModel
+                {
+                    FailureId = fail.Id,
+                    FailureDescription = fail.Description,
+                    FailureName = fail.Name,
+                    MachineName = item.Name,
+                    FailureStatus = (int)fail.Status,
+                    FailureCheckInTime = fail.CheckInTime
+                });
+
+        isLoading = false;
+    }
+
+    private async Task Save()
+    {
+        var countSuccess = 0;
+        foreach (var item in FailureViewModels)
+        {
+            var failureUpdateDTO = new FailureUpdateDTO
+            {
+                Id = item.FailureId,
+                Status = (FailureStatus)item.FailureStatus
+            };
+
+            var response = await httpClient.PostAsJsonAsync<FailureUpdateDTO>($"api/Machines/UpdateFailureStatus", failureUpdateDTO);
+            if (response.IsSuccessStatusCode)
+                countSuccess++;
+        }
+
+        if (countSuccess == FailureViewModels.Count())
+            snackbar.Add("Uspješno spremljeno");
+
+        await LoadData();
+    }
+}

@@ -31,17 +31,28 @@ namespace Manager.API.Repositories
             using (IDbConnection dbConnection = Connection)
             {
                 dbConnection.Open();
-                var sql = $"INSERT INTO failures (machineid,description,priority,status) VALUES ({item.MachineId},'{item.Description}',{(int)item.Priority},{(int)item.Status})";
-                dbConnection.Execute(sql);
+                var sqlFailures = $"INSERT INTO failures (name,machineid,description,priority,status) VALUES ('{item.Name}',{item.MachineId},'{item.Description}',{(int)item.Priority},{(int)item.Status})";
+                dbConnection.Execute(sqlFailures);
+                foreach (var attachement in item.Attachments)
+                {
+                    var failureId = dbConnection.QueryFirst<int>("SELECT id FROM failures ORDER BY checkintime DESC LIMIT 1");
+                    var sqlAttachments = $"INSERT INTO failureattachments (failureid,attachment) VALUES ({failureId},'{attachement}')";
+                    dbConnection.Execute(sqlAttachments);
+                }
             }
         }
-
         public IEnumerable<Failure> FindAll()
         {
             using (IDbConnection dbConnection = Connection)
             {
                 dbConnection.Open();
-                return dbConnection.Query<Failure>("SELECT * FROM failures");
+                var failures = dbConnection.Query<Failure>("SELECT * FROM failures");
+                foreach (var fail in failures)
+                {
+                    fail.Attachments.AddRange(dbConnection.Query<byte[]>($"SELECT * FROM failureattachments WHERE failureid = {fail.Id}").ToList());
+                }
+
+                return failures;
             }
         }
 
@@ -59,6 +70,7 @@ namespace Manager.API.Repositories
             using (IDbConnection dbConnection = Connection)
             {
                 dbConnection.Open();
+                dbConnection.Execute("DELETE FROM failureattachments WHERE failureid=@Id", new { Id = id });
                 dbConnection.Execute("DELETE FROM failures WHERE Id=@Id", new { Id = id });
             }
         }
@@ -68,7 +80,22 @@ namespace Manager.API.Repositories
             using (IDbConnection dbConnection = Connection)
             {
                 dbConnection.Open();
-                dbConnection.Query($"UPDATE failures SET description = '{item.Description}', priority = {(int)item.Priority}, status = {(int)item.Status} WHERE id = {item.Id}");
+                dbConnection.Query($"UPDATE failures SET name = '{item.Name}', description = '{item.Description}', priority = {(int)item.Priority}, status = {(int)item.Status} WHERE id = {item.Id}");
+                dbConnection.Execute("DELETE FROM failureattachments WHERE failureid=@Id", new { Id = item.Id });
+                foreach (var attachement in item.Attachments)
+                {
+                    var sqlAttachments = $"INSERT INTO failureattachments (failureid,attachment) VALUES ({item.Id},'{attachement}')";
+                    dbConnection.Execute(sqlAttachments);
+                }
+            }
+        }
+
+        public void UpdateStatus(Failure item)
+        {
+            using (IDbConnection dbConnection = Connection)
+            {
+                dbConnection.Open();
+                dbConnection.Query($"UPDATE failures SET status = {(int)item.Status} WHERE id = {item.Id}");
             }
         }
     }

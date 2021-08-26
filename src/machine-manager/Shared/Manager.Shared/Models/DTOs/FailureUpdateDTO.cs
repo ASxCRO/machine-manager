@@ -5,6 +5,11 @@ namespace Manager.Shared.Models.DTOs
 {
     public class FailureUpdateDTO
     {
+        public FailureUpdateDTO()
+        {
+            Attachments = new();
+        }
+        public string Name { get; set; }
         public int Id { get; set; }
         public Priority Priority { get; set; }
         public string Description { get; set; }

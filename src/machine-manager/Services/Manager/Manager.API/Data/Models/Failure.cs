@@ -6,6 +6,11 @@ namespace Manager.API.Data.Models
 {
     public class Failure : BaseEntity
     {
+        public Failure()
+        {
+            Attachments = new();
+        }
+        public string Name { get; set; }
         public int Id { get; set; }
         public Priority Priority { get; set; }
         public string Description { get; set; }

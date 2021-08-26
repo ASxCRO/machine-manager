@@ -1,0 +1,116 @@
+﻿@using Manager.Shared.Models.DTOs
+@using Manager.Shared.Models.Enums
+@using System.IO
+@inject IJSRuntime JSRuntime
+
+<MudDialog>
+    <DialogContent>
+        <EditForm Model="@_failure">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+            <MudItem xs="10">
+                <MudTextField @bind-Value="_failure.Name" Label="Ime kvara" HelperText="Unesite ime kvara" Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="10">
+                <MudTextField @bind-Value="_failure.Description" Label="Opis kvara" HelperText="Unesite opis kvara" Variant="Variant.Outlined" Disabled="@(_failure.Name.Length > 20 ? false : true)" />
+            </MudItem>
+            <MudItem xs="10" Class="m-2">
+                <p>Prioritet: </p>
+                <InputSelect @bind-Value="_failure.Priority">
+                    @foreach (var priority in Enum.GetValues(typeof(Priority)))
+                    {
+                        <option value="@priority">@priority</option>
+                    }
+                </InputSelect>
+            </MudItem>
+            <MudItem xs="10" Class="m-2">
+                <p>Status: </p>
+                <InputSelect @bind-Value="_failure.Status">
+                    @foreach (var status in Enum.GetValues(typeof(FailureStatus)))
+                    {
+                        <option value="@status">@status</option>
+                    }
+                </InputSelect>
+            </MudItem>
+            <MudItem xs="10" Class="m-2">
+                <p>Broj postojećih datoteka: @(Failure is null ? _failure.Attachments.Count() : Failure.Attachments.Count()) </p>
+            </MudItem>
+            <MudItem xs="10" Class="m-2">
+                <p>Priloži datoteke: </p>
+                <InputFile OnChange="@LoadFiles" multiple accept=".pdf" />
+            </MudItem>
+        </EditForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Primary" OnClick="OnClickDownloadButton">Preuzmi priloge</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Ok">Dodaj</MudButton>
+    </DialogActions>
+</MudDialog>
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+    [Parameter] public int MachineId { get; set; }
+    [Parameter] public FailureDTO Failure { get; set; }
+    private FailureCreateDTO _failure { get; set; }
+
+    protected override void OnInitialized()
+    {
+        _failure = new();
+        _failure.MachineId = MachineId;
+        if (Failure is not null)
+            _failure = new FailureCreateDTO
+            {
+                Name = Failure.Name,
+                Description = Failure.Description,
+                Priority = Failure.Priority,
+                Status = Failure.Status,
+                Attachments = Failure.Attachments,
+                MachineId = Failure.MachineId
+            };
+    }
+
+    private void Ok()
+    {
+        MudDialog.Close(DialogResult.Ok(_failure));
+    }
+
+    private async Task LoadFiles(InputFileChangeEventArgs e)
+    {
+        if (e.FileCount > 1)
+        {
+            foreach (var item in e.GetMultipleFiles())
+            {
+                var stream = item.OpenReadStream(Int32.MaxValue);
+                using (var memoryStream = new MemoryStream())
+                {
+                    await stream.CopyToAsync(memoryStream);
+                    _failure.Attachments.Add(memoryStream.ToArray());
+                }
+            }
+        }
+        else
+        {
+            var stream = e.File.OpenReadStream(Int32.MaxValue);
+            using (var memoryStream = new MemoryStream())
+            {
+                await stream.CopyToAsync(memoryStream);
+                _failure.Attachments.Add(memoryStream.ToArray());
+            }
+        }
+    }
+
+    private async Task OnClickDownloadButton()
+    {
+        foreach (var item in _failure.Attachments)
+        {
+            await JSRuntime.InvokeVoidAsync(
+            "downloadFromByteArray",
+            new
+            {
+                ByteArray = item,
+                FileName = $"_failure_{_failure.Name}-{DateTime.Now.ToLongTimeString()}.pdf",
+                ContentType = "application/pdf"
+            });
+        }
+
+    }
+}

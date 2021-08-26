@@ -5,7 +5,8 @@ using System.Collections.Generic;
 namespace Manager.Shared.Models.DTOs
 {
     public class FailureDTO
-    { 
+    {
+        public string Name { get; set; }
         public int Id { get; set; }
         public Priority Priority { get; set; }
         public string Description { get; set; }

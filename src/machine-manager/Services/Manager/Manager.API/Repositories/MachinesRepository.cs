@@ -40,7 +40,14 @@ namespace Manager.API.Repositories
                 dbConnection.Open();
                 var machines = dbConnection.Query<Machine>("SELECT * FROM machines");
                 foreach (var item in machines)
+                {
                     item.Failures = dbConnection.Query<Failure>($"SELECT * FROM failures WHERE machineid = {item.Id}").ToList();
+                    foreach (var fail in item.Failures)
+                    {
+                        fail.Attachments.AddRange(dbConnection.Query<byte[]>($"SELECT attachment FROM failureattachments WHERE failureid = {fail.Id}"));
+                    }
+                }
+                
                 return machines;
             }
         }

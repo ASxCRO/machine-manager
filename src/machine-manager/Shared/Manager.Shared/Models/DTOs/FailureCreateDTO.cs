@@ -9,6 +9,13 @@ namespace Manager.Shared.Models.DTOs
 {
     public class FailureCreateDTO
     {
+        public FailureCreateDTO()
+        {
+            Name = "";
+            Description = "";
+            Attachments = new();
+        }
+        public string Name { get; set; }
         public Priority Priority { get; set; }
         public string Description { get; set; }
         public FailureStatus Status { get; set; }
