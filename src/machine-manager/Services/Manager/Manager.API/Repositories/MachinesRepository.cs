@@ -1,12 +1,11 @@
 ﻿using Dapper;
 using Manager.API.Data.Models;
+using Manager.Shared.Models.DTOs;
 using Microsoft.Extensions.Configuration;
 using Npgsql;
-using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
-using System.Threading.Tasks;
 
 namespace Manager.API.Repositories
 {
@@ -26,7 +25,7 @@ namespace Manager.API.Repositories
             }
         }
         public void Add(Machine item)
-        {
+        { 
             using (IDbConnection dbConnection = Connection)
             {
                 dbConnection.Open();
@@ -60,6 +59,7 @@ namespace Manager.API.Repositories
             using (IDbConnection dbConnection = Connection)
             {
                 dbConnection.Open();
+                dbConnection.Execute("DELETE FROM failures WHERE MachineId=@Id", new { Id = id });
                 dbConnection.Execute("DELETE FROM machines WHERE Id=@Id", new { Id = id });
             }
         }

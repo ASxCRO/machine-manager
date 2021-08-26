@@ -1,5 +1,6 @@
 ﻿using Dapper;
 using Manager.API.Data.Models;
+using Manager.Shared.Models.DTOs;
 using Microsoft.Extensions.Configuration;
 using Npgsql;
 using System;
@@ -67,7 +68,7 @@ namespace Manager.API.Repositories
             using (IDbConnection dbConnection = Connection)
             {
                 dbConnection.Open();
-                dbConnection.Query($"UPDATE failures SET machineid={item.MachineId}, description = {item.Description}, priority = {item.Priority}, status = {item.Status} WHERE id = {item.Id}");
+                dbConnection.Query($"UPDATE failures SET description = '{item.Description}', priority = {(int)item.Priority}, status = {(int)item.Status} WHERE id = {item.Id}");
             }
         }
     }

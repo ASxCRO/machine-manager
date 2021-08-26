@@ -1,4 +1,7 @@
+using AutoMapper;
+using Manager.API.Data.Models;
 using Manager.API.Repositories;
+using Manager.Shared.Models.DTOs;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
@@ -32,8 +35,12 @@ namespace Manager.API
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "Manager.API", Version = "v1" });
             });
+
+            services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
+
             services.AddScoped<MachinesRepository>();
             services.AddScoped<FailuresRepository>();
+
 
         }
 
